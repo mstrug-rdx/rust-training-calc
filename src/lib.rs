@@ -1,13 +1,15 @@
 #![allow(dead_code)]
 
-#[derive(Debug)]
+type BoxedExpr = Box<Expr>;
+
+#[derive(Debug, PartialEq)]
 enum Expr {
     Number(f64),
-    Add(Box<Expr>, Box<Expr>),
-    Sub(Box<Expr>, Box<Expr>),
-    Sqrt(Box<Expr>),
-    Mul(Box<Expr>, Box<Expr>),
-    Div(Box<Expr>, Box<Expr>),
+    Add(BoxedExpr, BoxedExpr),
+    Sub(BoxedExpr, BoxedExpr),
+    Sqrt(BoxedExpr),
+    Mul(BoxedExpr, BoxedExpr),
+    Div(BoxedExpr, BoxedExpr),
 }
 
 #[derive(Debug, PartialEq)]
@@ -52,9 +54,7 @@ fn eval(expr: &Expr) -> Result<f64, EvalError> {
 fn parse(input: &str) -> Result<Expr, ParseError> {
     let mut stack: Vec<Expr> = Vec::new();
 
-    let x = input.split_ascii_whitespace();
-
-    for word in x {
+    for word in input.split_ascii_whitespace() {
         match word {
             "-" => {
                 let x = stack.pop().ok_or(ParseError::WrongArgumentsCount)?;
@@ -158,6 +158,38 @@ mod tests {
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
         assert_eq!(res, 0.0);
+    }
+
+    #[test]
+    fn parse_simple() {
+        let input = "1.0";
+        let res_p = parse(input).unwrap();
+        let res = eval(&res_p).unwrap();
+        assert_eq!(res, 1.0);
+    }
+
+    #[test]
+    fn parse_error_1() {
+        let input = "";
+        let res = parse(input);
+        assert_eq!(res, Err(ParseError::EmptyInput));
+    }
+
+    #[test]
+    fn parse_error_2() {
+        let input = "1 +";
+        let res = parse(input);
+        assert_eq!(res, Err(ParseError::WrongArgumentsCount));
+    }
+
+    #[test]
+    fn parse_error_3() {
+        let input = "something";
+        let res = parse(input);
+        assert_eq!(
+            res,
+            Err(ParseError::InvalidInput(String::from("something")))
+        );
     }
 
     #[test]
