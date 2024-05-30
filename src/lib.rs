@@ -23,6 +23,7 @@ enum ParseError {
     InvalidInput(String),
     WrongArgumentsCount,
     EmptyInput,
+    LeftArguments,
 }
 
 fn eval(expr: &Expr) -> Result<f64, EvalError> {
@@ -89,7 +90,11 @@ fn parse(input: &str) -> Result<Expr, ParseError> {
         }
     }
 
-    stack.pop().ok_or(ParseError::EmptyInput)
+    if stack.len() > 1 {
+        Err(ParseError::LeftArguments)
+    } else {
+        stack.pop().ok_or(ParseError::EmptyInput)
+    }
 }
 
 #[cfg(test)]
@@ -190,6 +195,13 @@ mod tests {
             res,
             Err(ParseError::InvalidInput(String::from("something")))
         );
+    }
+
+    #[test]
+    fn parse_error_4() {
+        let input = "1 1";
+        let res = parse(input);
+        assert_eq!(res, Err(ParseError::LeftArguments));
     }
 
     #[test]
