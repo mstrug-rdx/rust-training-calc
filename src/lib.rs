@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::str::FromStr;
+use std::{fmt::Error, str::FromStr};
 
 type BoxedExpr = Box<Expr>;
 
@@ -27,11 +27,25 @@ enum EvalError {
     DivisionByZero,
 }
 
-#[derive(Debug, PartialEq)]
+impl std::fmt::Display for EvalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EvalError::DivisionByZero => write!(f, "Divistion by zero"),
+        }
+    }
+}
+
+impl std::error::Error for EvalError {}
+
+#[derive(Debug, PartialEq, thiserror::Error)]
 enum ParseError {
+    #[error("Invalid input")]
     InvalidInput(String),
+    #[error("Wrong arguments count")]
     WrongArgumentsCount,
+    #[error("Empty input")]
     EmptyInput,
+    #[error("Left arguments")]
     LeftArguments,
 }
 
