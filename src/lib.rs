@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
-use std::{fmt::Error, str::FromStr};
+use std::str::FromStr;
 
-type BoxedExpr = Box<Expr>;
+pub type BoxedExpr = Box<Expr>;
 
 #[derive(Debug, PartialEq)]
-enum Expr {
+pub enum Expr {
     Number(i64),
     Add(BoxedExpr, BoxedExpr),
     Sub(BoxedExpr, BoxedExpr),
@@ -23,7 +23,7 @@ impl FromStr for Expr {
 }
 
 #[derive(Debug, PartialEq)]
-enum EvalError {
+pub enum EvalError {
     DivisionByZero,
 }
 
@@ -38,8 +38,8 @@ impl std::fmt::Display for EvalError {
 impl std::error::Error for EvalError {}
 
 #[derive(Debug, PartialEq, thiserror::Error)]
-enum ParseError {
-    #[error("Invalid input")]
+pub enum ParseError {
+    #[error("Invalid input: {0}")]
     InvalidInput(String),
     #[error("Wrong arguments count")]
     WrongArgumentsCount,
@@ -49,7 +49,19 @@ enum ParseError {
     LeftArguments,
 }
 
-fn eval(expr: &Expr) -> Result<i64, EvalError> {
+#[derive(Debug, PartialEq, thiserror::Error)]
+pub enum ParseOrEvalError {
+    #[error("Parse error: {0}")]
+    Parse(#[from] ParseError),
+    #[error("Evaluation error: {0}")]
+    Eval(#[from] EvalError),
+}
+
+pub fn eval_str(s: &str) -> Result<i64, ParseOrEvalError> {
+    Ok(eval(&s.parse()?)?) // automatic conversion between error types due to implementation of From<>
+}
+
+pub fn eval(expr: &Expr) -> Result<i64, EvalError> {
     Ok(match expr {
         Expr::Number(x) => *x,
         Expr::Add(x, y) => eval(x)? + eval(y)?,
@@ -71,7 +83,7 @@ fn eval(expr: &Expr) -> Result<i64, EvalError> {
 }
 
 // compatible input: "3 sqr 4 sqr + 5 sqr -"
-fn parse(input: &str) -> Result<Expr, ParseError> {
+pub fn parse(input: &str) -> Result<Expr, ParseError> {
     let mut stack: Vec<Expr> = Vec::new();
 
     for word in input.split_ascii_whitespace() {
