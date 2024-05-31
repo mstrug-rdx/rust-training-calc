@@ -4,10 +4,10 @@ type BoxedExpr = Box<Expr>;
 
 #[derive(Debug, PartialEq)]
 enum Expr {
-    Number(f64),
+    Number(i64),
     Add(BoxedExpr, BoxedExpr),
     Sub(BoxedExpr, BoxedExpr),
-    Sqrt(BoxedExpr),
+    Sqr(BoxedExpr),
     Mul(BoxedExpr, BoxedExpr),
     Div(BoxedExpr, BoxedExpr),
 }
@@ -15,7 +15,6 @@ enum Expr {
 #[derive(Debug, PartialEq)]
 enum EvalError {
     DivisionByZero,
-    SqrtOfNegativeNumber,
 }
 
 #[derive(Debug, PartialEq)]
@@ -26,7 +25,7 @@ enum ParseError {
     LeftArguments,
 }
 
-fn eval(expr: &Expr) -> Result<f64, EvalError> {
+fn eval(expr: &Expr) -> Result<i64, EvalError> {
     Ok(match expr {
         Expr::Number(x) => *x,
         Expr::Add(x, y) => eval(x)? + eval(y)?,
@@ -34,19 +33,15 @@ fn eval(expr: &Expr) -> Result<f64, EvalError> {
         Expr::Mul(x, y) => eval(x)? * eval(y)?,
         Expr::Div(x, y) => {
             let y = eval(y)?;
-            if y == 0f64 {
+            if y == 0 {
                 return Err(EvalError::DivisionByZero);
             } else {
                 eval(x)? / y
             }
         }
-        Expr::Sqrt(x) => {
+        Expr::Sqr(x) => {
             let x = eval(x)?;
-            if x < 0f64 {
-                return Err(EvalError::SqrtOfNegativeNumber);
-            } else {
-                x.sqrt()
-            }
+            x * x
         }
     })
 }
@@ -79,11 +74,11 @@ fn parse(input: &str) -> Result<Expr, ParseError> {
             }
             "sqr" => {
                 let x = stack.pop().ok_or(ParseError::WrongArgumentsCount)?;
-                stack.push(Expr::Sqrt(x.into()))
+                stack.push(Expr::Sqr(x.into()))
             }
             _ => {
                 let x = word
-                    .parse::<f64>()
+                    .parse::<i64>()
                     .map_err(|_| ParseError::InvalidInput(word.to_string()))?;
                 stack.push(Expr::Number(x));
             }
@@ -106,7 +101,7 @@ mod tests {
         let input = "1 1 +";
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
-        assert_eq!(res, 2.0);
+        assert_eq!(res, 2);
     }
 
     #[test]
@@ -114,7 +109,7 @@ mod tests {
         let input = "2 1 -";
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
-        assert_eq!(res, 1.0);
+        assert_eq!(res, 1);
     }
 
     #[test]
@@ -122,7 +117,7 @@ mod tests {
         let input = "2 3 *";
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
-        assert_eq!(res, 6.0);
+        assert_eq!(res, 6);
     }
 
     #[test]
@@ -130,15 +125,15 @@ mod tests {
         let input = "4 2 /";
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
-        assert_eq!(res, 2.0);
+        assert_eq!(res, 2);
     }
 
     #[test]
-    fn parse_sqrt() {
+    fn parse_sqr() {
         let input = "4 sqr";
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
-        assert_eq!(res, 2.0);
+        assert_eq!(res, 16);
     }
 
     #[test]
@@ -146,31 +141,31 @@ mod tests {
         let input = "4 2 + 6 *";
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
-        assert_eq!(res, 36.0);
+        assert_eq!(res, 36);
     }
 
     #[test]
-    fn parse_add_mul_sqrt() {
-        let input = "4 2 + 6 * sqr";
+    fn parse_add_mul_sqr() {
+        let input = "4 2 + 1 * sqr";
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
-        assert_eq!(res, 6.0);
+        assert_eq!(res, 36);
     }
 
     #[test]
     fn parse_test() {
-        let input = "9 sqr 4 sqr + 25 sqr -";
+        let input = "3 sqr 4 sqr + 5 sqr -";
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
-        assert_eq!(res, 0.0);
+        assert_eq!(res, 0);
     }
 
     #[test]
     fn parse_simple() {
-        let input = "1.0";
+        let input = "1";
         let res_p = parse(input).unwrap();
         let res = eval(&res_p).unwrap();
-        assert_eq!(res, 1.0);
+        assert_eq!(res, 1);
     }
 
     #[test]
@@ -206,67 +201,60 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let expr = Expr::Add(Expr::Number(1.0).into(), Expr::Number(2.0).into());
+        let expr = Expr::Add(Expr::Number(1).into(), Expr::Number(2).into());
         let res = eval(&expr).unwrap();
-        assert_eq!(res, 3.0)
+        assert_eq!(res, 3)
     }
 
     #[test]
     fn test_sub() {
-        let expr = Expr::Sub(Expr::Number(1.0).into(), Expr::Number(2.0).into());
+        let expr = Expr::Sub(Expr::Number(1).into(), Expr::Number(2).into());
         let res = eval(&expr).unwrap();
-        assert_eq!(res, -1.0)
+        assert_eq!(res, -1)
     }
 
     #[test]
     fn test_mul() {
-        let expr = Expr::Mul(Expr::Number(3.0).into(), Expr::Number(2.0).into());
+        let expr = Expr::Mul(Expr::Number(3).into(), Expr::Number(2).into());
         let res = eval(&expr).unwrap();
-        assert_eq!(res, 6.0)
+        assert_eq!(res, 6)
     }
 
     #[test]
     fn test_div() {
-        let expr = Expr::Div(Expr::Number(3.0).into(), Expr::Number(2.0).into());
+        let expr = Expr::Div(Expr::Number(3).into(), Expr::Number(2).into());
         let res = eval(&expr).unwrap();
-        assert_eq!(res, 1.5)
+        assert_eq!(res, 1)
     }
 
     #[test]
     fn test_number() {
-        let expr = Expr::Number(123.0);
+        let expr = Expr::Number(123);
         let res = eval(&expr).unwrap();
-        assert_eq!(res, 123.0)
+        assert_eq!(res, 123)
     }
 
     #[test]
     fn test_sqrt() {
-        let expr = Expr::Sqrt(Expr::Number(16.0).into());
+        let expr = Expr::Sqr(Expr::Number(4).into());
         let res = eval(&expr).unwrap();
-        assert_eq!(res, 4.0)
+        assert_eq!(res, 16)
     }
 
     #[test]
     fn test_div_zero() {
-        let expr = Expr::Div(Expr::Number(-1.0).into(), Expr::Number(0.0).into());
+        let expr = Expr::Div(Expr::Number(-1).into(), Expr::Number(0).into());
         let res = eval(&expr);
         assert_eq!(res, Err(EvalError::DivisionByZero))
     }
 
     #[test]
-    fn test_sqrt_error() {
-        let expr = Expr::Sqrt(Expr::Number(-1.0).into());
-        let res = eval(&expr);
-        assert_eq!(res, Err(EvalError::SqrtOfNegativeNumber))
-    }
-
-    #[test]
     fn test_complicated() {
         let expr = Expr::Add(
-            Expr::Mul(Expr::Number(-1.0).into(), Expr::Number(2.0).into()).into(),
-            Expr::Sqrt(Expr::Number(25.0).into()).into(),
+            Expr::Mul(Expr::Number(-1).into(), Expr::Number(2).into()).into(),
+            Expr::Sqr(Expr::Number(25).into()).into(),
         );
         let res = eval(&expr).unwrap();
-        assert_eq!(res, 3.0)
+        assert_eq!(res, 623)
     }
 }
