@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::str::FromStr;
+
 type BoxedExpr = Box<Expr>;
 
 #[derive(Debug, PartialEq)]
@@ -10,6 +12,14 @@ enum Expr {
     Sqr(BoxedExpr),
     Mul(BoxedExpr, BoxedExpr),
     Div(BoxedExpr, BoxedExpr),
+}
+
+impl FromStr for Expr {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse(s)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -256,5 +266,12 @@ mod tests {
         );
         let res = eval(&expr).unwrap();
         assert_eq!(res, 623)
+    }
+
+    #[test]
+    fn test_from_str() {
+        let expr = Expr::from_str("4 2 + 3 *").unwrap();
+        let res = eval(&expr).unwrap();
+        assert_eq!(res, 18)
     }
 }
