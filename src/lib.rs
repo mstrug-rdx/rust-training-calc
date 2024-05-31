@@ -14,6 +14,29 @@ pub enum Expr {
     Div(BoxedExpr, BoxedExpr),
 }
 
+impl Expr {
+    pub fn eval(&self) -> Result<i64, EvalError> {
+        Ok(match self {
+            Expr::Number(x) => *x,
+            Expr::Add(x, y) => x.eval()? + y.eval()?,
+            Expr::Sub(x, y) => x.eval()? - y.eval()?,
+            Expr::Mul(x, y) => x.eval()? * y.eval()?,
+            Expr::Div(x, y) => {
+                let y = y.eval()?;
+                if y == 0 {
+                    return Err(EvalError::DivisionByZero);
+                } else {
+                    x.eval()? / y
+                }
+            }
+            Expr::Sqr(x) => {
+                let x = x.eval()?;
+                x * x
+            }
+        })
+    }
+}
+
 impl FromStr for Expr {
     type Err = ParseError;
 
@@ -58,10 +81,10 @@ pub enum ParseOrEvalError {
 }
 
 pub fn eval_str(s: &str) -> Result<i64, ParseOrEvalError> {
-    Ok(eval(&s.parse()?)?) // automatic conversion between error types due to implementation of From<>
+    Ok(s.parse::<Expr>()?.eval()?) // automatic conversion between error types due to implementation of From<>
 }
 
-pub fn eval(expr: &Expr) -> Result<i64, EvalError> {
+/*fn eval(expr: &Expr) -> Result<i64, EvalError> {
     Ok(match expr {
         Expr::Number(x) => *x,
         Expr::Add(x, y) => eval(x)? + eval(y)?,
@@ -80,10 +103,10 @@ pub fn eval(expr: &Expr) -> Result<i64, EvalError> {
             x * x
         }
     })
-}
+}*/
 
 // compatible input: "3 sqr 4 sqr + 5 sqr -"
-pub fn parse(input: &str) -> Result<Expr, ParseError> {
+fn parse(input: &str) -> Result<Expr, ParseError> {
     let mut stack: Vec<Expr> = Vec::new();
 
     for word in input.split_ascii_whitespace() {
@@ -136,7 +159,7 @@ mod tests {
     fn parse_add() {
         let input = "1 1 +";
         let res_p = parse(input).unwrap();
-        let res = eval(&res_p).unwrap();
+        let res = res_p.eval().unwrap();
         assert_eq!(res, 2);
     }
 
@@ -144,7 +167,7 @@ mod tests {
     fn parse_sub() {
         let input = "2 1 -";
         let res_p = parse(input).unwrap();
-        let res = eval(&res_p).unwrap();
+        let res = res_p.eval().unwrap();
         assert_eq!(res, 1);
     }
 
@@ -152,7 +175,7 @@ mod tests {
     fn parse_mul() {
         let input = "2 3 *";
         let res_p = parse(input).unwrap();
-        let res = eval(&res_p).unwrap();
+        let res = res_p.eval().unwrap();
         assert_eq!(res, 6);
     }
 
@@ -160,7 +183,7 @@ mod tests {
     fn parse_div() {
         let input = "4 2 /";
         let res_p = parse(input).unwrap();
-        let res = eval(&res_p).unwrap();
+        let res = res_p.eval().unwrap();
         assert_eq!(res, 2);
     }
 
@@ -168,7 +191,7 @@ mod tests {
     fn parse_sqr() {
         let input = "4 sqr";
         let res_p = parse(input).unwrap();
-        let res = eval(&res_p).unwrap();
+        let res = res_p.eval().unwrap();
         assert_eq!(res, 16);
     }
 
@@ -176,7 +199,7 @@ mod tests {
     fn parse_add_mul() {
         let input = "4 2 + 6 *";
         let res_p = parse(input).unwrap();
-        let res = eval(&res_p).unwrap();
+        let res = res_p.eval().unwrap();
         assert_eq!(res, 36);
     }
 
@@ -184,7 +207,7 @@ mod tests {
     fn parse_add_mul_sqr() {
         let input = "4 2 + 1 * sqr";
         let res_p = parse(input).unwrap();
-        let res = eval(&res_p).unwrap();
+        let res = res_p.eval().unwrap();
         assert_eq!(res, 36);
     }
 
@@ -192,7 +215,7 @@ mod tests {
     fn parse_test() {
         let input = "3 sqr 4 sqr + 5 sqr -";
         let res_p = parse(input).unwrap();
-        let res = eval(&res_p).unwrap();
+        let res = res_p.eval().unwrap();
         assert_eq!(res, 0);
     }
 
@@ -200,7 +223,7 @@ mod tests {
     fn parse_simple() {
         let input = "1";
         let res_p = parse(input).unwrap();
-        let res = eval(&res_p).unwrap();
+        let res = res_p.eval().unwrap();
         assert_eq!(res, 1);
     }
 
@@ -238,49 +261,49 @@ mod tests {
     #[test]
     fn test_add() {
         let expr = Expr::Add(Expr::Number(1).into(), Expr::Number(2).into());
-        let res = eval(&expr).unwrap();
+        let res = expr.eval().unwrap();
         assert_eq!(res, 3)
     }
 
     #[test]
     fn test_sub() {
         let expr = Expr::Sub(Expr::Number(1).into(), Expr::Number(2).into());
-        let res = eval(&expr).unwrap();
+        let res = expr.eval().unwrap();
         assert_eq!(res, -1)
     }
 
     #[test]
     fn test_mul() {
         let expr = Expr::Mul(Expr::Number(3).into(), Expr::Number(2).into());
-        let res = eval(&expr).unwrap();
+        let res = expr.eval().unwrap();
         assert_eq!(res, 6)
     }
 
     #[test]
     fn test_div() {
         let expr = Expr::Div(Expr::Number(3).into(), Expr::Number(2).into());
-        let res = eval(&expr).unwrap();
+        let res = expr.eval().unwrap();
         assert_eq!(res, 1)
     }
 
     #[test]
     fn test_number() {
         let expr = Expr::Number(123);
-        let res = eval(&expr).unwrap();
+        let res = expr.eval().unwrap();
         assert_eq!(res, 123)
     }
 
     #[test]
     fn test_sqrt() {
         let expr = Expr::Sqr(Expr::Number(4).into());
-        let res = eval(&expr).unwrap();
+        let res = expr.eval().unwrap();
         assert_eq!(res, 16)
     }
 
     #[test]
     fn test_div_zero() {
         let expr = Expr::Div(Expr::Number(-1).into(), Expr::Number(0).into());
-        let res = eval(&expr);
+        let res = expr.eval();
         assert_eq!(res, Err(EvalError::DivisionByZero))
     }
 
@@ -290,14 +313,14 @@ mod tests {
             Expr::Mul(Expr::Number(-1).into(), Expr::Number(2).into()).into(),
             Expr::Sqr(Expr::Number(25).into()).into(),
         );
-        let res = eval(&expr).unwrap();
+        let res = expr.eval().unwrap();
         assert_eq!(res, 623)
     }
 
     #[test]
     fn test_from_str() {
         let expr = Expr::from_str("4 2 + 3 *").unwrap();
-        let res = eval(&expr).unwrap();
+        let res = expr.eval().unwrap();
         assert_eq!(res, 18)
     }
 }
